@@ -670,7 +670,7 @@ async function sendEmails(){
     await emailjs.send(CONFIG.emailjsServiceId, CONFIG.templateAgency, {
       ...common,
       to_email    : CONFIG.agencyEmail,
-      subject     : `Nouveau devis — ${v('fPrenom')} ${v('fNom')}${v('fEntreprise')?' / '+v('fEntreprise'):''}`,
+      subject     : `Nouveau devis — ${v('fPrenom')} ${v('fNom')}${v('fEntreprise')?' - '+v('fEntreprise'):''}`,
       email_html  : buildEmailHTML(true),   // ← variable dans ton template EmailJS
     });
 
