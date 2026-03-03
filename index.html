@@ -268,11 +268,11 @@
 // ╚══════════════════════════════════════════════════════╝
 const CONFIG = {
   agencyName       : 'Studio.',                  // Ton nom d'agence
-  agencyEmail      : 'contact@votre-agence.fr',  // Ton email (notif interne)
-  emailjsPublicKey : 'VOTRE_PUBLIC_KEY',          // EmailJS > Account > API Keys
-  emailjsServiceId : 'VOTRE_SERVICE_ID',          // EmailJS > Email Services
-  templateAgency   : 'TEMPLATE_AGENCE_ID',        // Template notif interne
-  templateClient   : 'TEMPLATE_CLIENT_ID',        // Template confirmation client
+  agencyEmail      : 'medaille.logan@gmail.com',  // Ton email (notif interne)
+  emailjsPublicKey : 'V9gJ9m24slXpr5MMS',          // EmailJS > Account > API Keys
+  emailjsServiceId : 'service_zc8mmsb',          // EmailJS > Email Services
+  templateAgency   : 'template_yzrp4fq',        // Template notif interne
+  templateClient   : 'template_yzrp4fq',        // Template confirmation client
 };
 
 // ══ DATA ══════════════════════════════════════════════
@@ -645,7 +645,7 @@ async function sendEmails(){
   const v=id=>document.getElementById(id).value.trim();
   hideAlerts();
 
-  if(CONFIG.emailjsPublicKey.startsWith('V9gJ9m24slXpr5MMS')){
+  if(CONFIG.emailjsPublicKey.startsWith('VOTRE')){
     showAlert('error','EmailJS non configuré — remplis le bloc CONFIG en haut du script et recharge la page.');
     return;
   }
