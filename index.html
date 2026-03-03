@@ -148,7 +148,7 @@
 
 <header>
   <div class="logo">Studio<span>.</span></div>
-  <div class="header-contact" id="headerEmail">contact@votre-agence.fr</div>
+  <div class="header-contact" id="headerEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="06656968726765724670697274632b676163686563286074">[email&#160;protected]</a></div>
 </header>
 <div class="progress-wrap" id="progressBar"></div>
 
@@ -262,7 +262,7 @@
 
 <footer>Studio. — Devis non contractuel. Prix HT estimatifs soumis à validation.</footer>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ╔══════════════════════════════════════════════════════╗
 // ║             ⚙️  CONFIGURATION — À REMPLIR            ║
 // ╚══════════════════════════════════════════════════════╝
@@ -645,7 +645,7 @@ async function sendEmails(){
   const v=id=>document.getElementById(id).value.trim();
   hideAlerts();
 
-  if(CONFIG.emailjsPublicKey.startsWith('VOTRE')){
+  if(CONFIG.emailjsPublicKey.startsWith('V9gJ9m24slXpr5MMS')){
     showAlert('error','EmailJS non configuré — remplis le bloc CONFIG en haut du script et recharge la page.');
     return;
   }
@@ -653,8 +653,6 @@ async function sendEmails(){
   btn.classList.add('loading');btn.disabled=true;
 
   try {
-    emailjs.init({publicKey:CONFIG.emailjsPublicKey});
-
     const common={
       agency_name      : CONFIG.agencyName,
       client_prenom    : v('fPrenom'),
@@ -731,6 +729,8 @@ function goTo(n){
 document.getElementById('headerEmail').textContent=CONFIG.agencyEmail;
 renderProgress();
 renderServiceCards();
+// Init EmailJS une seule fois au chargement
+emailjs.init({ publicKey: CONFIG.emailjsPublicKey });
 </script>
 
 <!--
@@ -761,8 +761,4 @@ renderServiceCards();
 ║                                                                  ║
 ║  4. Account → API Keys → Public Key → CONFIG.emailjsPublicKey    ║
 ║                                                                  ║
-║  5. Remplis CONFIG, publie sur GitHub Pages → c'est live ! 🚀    ║
-╚══════════════════════════════════════════════════════════════════╝
--->
-</body>
-</html>
+║  5. Remplis CONFIG, publie sur GitHub Pages → c'est live ! �
