@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Devis — Agence Communication Digitale</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <!-- jsPDF — génération PDF côté navigateur -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- EmailJS — envoi sans backend, plan FREE -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#F7F4EF; --surface:#FFFFFF; --ink:#1C1A17; --ink-muted:#6B6560;
+      --gold:#B8892A; --gold-light:#F0E4C8; --gold-dark:#8C6820;
+      --border:#E2DDD5; --danger:#C0392B; --success:#1e7e44;
+      --radius:3px; --shadow:0 2px 20px rgba(28,26,23,0.07);
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; font-size:15px; line-height:1.6; }
+
+    header { background:var(--ink); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:64px; position:sticky; top:0; z-index:100; }
+    .logo { font-family:'Cormorant Garamond',serif; font-size:1.35rem; font-weight:600; color:#fff; letter-spacing:.03em; }
+    .logo span { color:var(--gold); }
+    .header-contact { font-size:.8rem; color:#aaa; letter-spacing:.05em; text-transform:uppercase; }
+
+    .progress-wrap { background:var(--ink); padding:0 2rem 1.5rem; display:flex; }
+    .step-indicator { flex:1; display:flex; flex-direction:column; align-items:center; gap:.4rem; }
+    .step-dot-row { display:flex; align-items:center; width:100%; }
+    .step-line { flex:1; height:1px; background:#3a3830; transition:background .4s; }
+    .step-line.done { background:var(--gold); }
+    .step-dot { width:28px; height:28px; border-radius:50%; border:2px solid #3a3830; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:500; color:#888; background:var(--ink); transition:all .3s; flex-shrink:0; }
+    .step-dot.active { border-color:var(--gold); color:var(--gold); }
+    .step-dot.done { border-color:var(--gold); background:var(--gold); color:var(--ink); }
+    .step-label { font-size:.68rem; color:#666; text-transform:uppercase; letter-spacing:.07em; text-align:center; }
+    .step-label.active { color:var(--gold); }
+
+    main { max-width:860px; margin:0 auto; padding:3rem 2rem 5rem; }
+    .step-panel { display:none; animation:fadeUp .4s ease both; }
+    .step-panel.active { display:block; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+    .step-header { margin-bottom:2.5rem; }
+    .step-header .eyebrow { font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--gold); margin-bottom:.5rem; }
+    .step-header h2 { font-family:'Cormorant Garamond',serif; font-size:2.4rem; font-weight:600; line-height:1.15; }
+    .step-header p { margin-top:.75rem; color:var(--ink-muted); max-width:520px; }
+    .deco-line { width:48px; height:2px; background:var(--gold); margin-bottom:2rem; }
+
+    .services-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:1rem; margin-bottom:2.5rem; }
+    .service-card { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:1.4rem 1.4rem 1.2rem; cursor:pointer; transition:border-color .2s,box-shadow .2s,transform .15s; position:relative; user-select:none; }
+    .service-card:hover { border-color:var(--gold); transform:translateY(-2px); box-shadow:var(--shadow); }
+    .service-card.selected { border-color:var(--gold); background:#FFFBF3; }
+    .service-card .check { position:absolute; top:1rem; right:1rem; width:20px; height:20px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; transition:all .2s; }
+    .service-card.selected .check { border-color:var(--gold); background:var(--gold); }
+    .service-card.selected .check::after { content:''; width:5px; height:9px; border:2px solid white; border-top:none; border-left:none; transform:rotate(42deg) translateY(-1px); display:block; }
+    .service-icon { font-size:1.6rem; margin-bottom:.75rem; display:block; }
+    .service-name { font-family:'Cormorant Garamond',serif; font-size:1.15rem; font-weight:600; margin-bottom:.3rem; }
+    .service-desc { font-size:.8rem; color:var(--ink-muted); line-height:1.5; }
+    .service-price { margin-top:.9rem; font-size:.78rem; font-weight:500; color:var(--gold-dark); }
+
+    .config-block { background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:1.5rem; overflow:hidden; box-shadow:var(--shadow); }
+    .config-block-header { background:var(--ink); color:#fff; padding:1rem 1.5rem; display:flex; align-items:center; gap:.75rem; }
+    .config-block-header .icon { font-size:1.1rem; }
+    .config-block-header .title { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:600; }
+    .config-block-body { padding:1.5rem; }
+    .option-group { margin-bottom:1.4rem; }
+    .option-group:last-child { margin-bottom:0; }
+    .option-label { font-size:.75rem; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-muted); margin-bottom:.7rem; }
+    .radio-row,.check-row { display:flex; flex-wrap:wrap; gap:.5rem; }
+    .pill-option { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem 1rem; border:1.5px solid var(--border); border-radius:100px; cursor:pointer; font-size:.82rem; color:var(--ink-muted); transition:all .18s; user-select:none; white-space:nowrap; }
+    .pill-option:hover { border-color:var(--gold); color:var(--ink); }
+    .pill-option input { display:none; }
+    .pill-option.active { border-color:var(--gold); background:var(--gold-light); color:var(--gold-dark); font-weight:500; }
+    .pill-price { font-size:.72rem; opacity:.75; }
+
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-bottom:1.2rem; }
+    @media(max-width:540px){ .form-grid,.services-grid{grid-template-columns:1fr} }
+    .field { display:flex; flex-direction:column; gap:.4rem; }
+    .field.full { grid-column:1/-1; }
+    label { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-muted); }
+    input[type="text"],input[type="email"],input[type="tel"],textarea {
+      background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius);
+      padding:.7rem .9rem; font-family:'DM Sans',sans-serif; font-size:.9rem;
+      color:var(--ink); transition:border-color .2s; outline:none; width:100%;
+    }
+    input:focus,textarea:focus { border-color:var(--gold); }
+    textarea { min-height:110px; resize:vertical; }
+
+    .summary-table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; }
+    .summary-table thead th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-muted); padding:0 0 .75rem; border-bottom:1px solid var(--border); }
+    .summary-table thead th:last-child { text-align:right; }
+    .summary-table tbody tr td { padding:1rem 0; border-bottom:1px solid var(--border); vertical-align:top; }
+    .summary-table tbody tr:last-child td { border-bottom:none; }
+    .summary-table .srv-name { font-family:'Cormorant Garamond',serif; font-size:1.05rem; font-weight:600; }
+    .summary-table .srv-detail { font-size:.78rem; color:var(--ink-muted); margin-top:.2rem; }
+    .summary-table .srv-price { text-align:right; font-weight:500; white-space:nowrap; padding-left:1rem; }
+    .total-row { display:flex; justify-content:space-between; align-items:center; background:var(--ink); color:#fff; padding:1.1rem 1.5rem; border-radius:4px; margin-bottom:1.5rem; }
+    .total-label { font-size:.78rem; text-transform:uppercase; letter-spacing:.1em; opacity:.7; }
+    .total-amount { font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:600; color:var(--gold); }
+    .total-note { font-size:.72rem; opacity:.5; margin-top:.2rem; }
+
+    .info-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; }
+    .info-card h4 { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-muted); margin-bottom:.75rem; }
+    .info-row { display:flex; gap:.5rem; font-size:.88rem; margin-bottom:.3rem; }
+    .info-key { color:var(--ink-muted); min-width:100px; }
+
+    /* Bandeau info email */
+    .email-info-band {
+      display:flex; align-items:flex-start; gap:.9rem;
+      background:var(--gold-light); border:1px solid #dfc98a; border-radius:6px;
+      padding:1rem 1.2rem; margin-bottom:1.5rem; font-size:.82rem; color:var(--gold-dark);
+      line-height:1.5;
+    }
+    .email-info-band .ei-icon { font-size:1.3rem; flex-shrink:0; margin-top:.05rem; }
+    .email-info-band strong { display:block; margin-bottom:.2rem; font-size:.85rem; }
+
+    .btn-row { display:flex; gap:1rem; justify-content:flex-end; margin-top:2rem; flex-wrap:wrap; }
+    .btn { padding:.75rem 2rem; border:none; border-radius:var(--radius); font-family:'DM Sans',sans-serif; font-size:.85rem; font-weight:500; letter-spacing:.05em; cursor:pointer; transition:all .2s; text-transform:uppercase; }
+    .btn-ghost { background:transparent; border:1.5px solid var(--border); color:var(--ink-muted); }
+    .btn-ghost:hover { border-color:var(--ink); color:var(--ink); }
+    .btn-primary { background:var(--gold); color:white; }
+    .btn-primary:hover { background:var(--gold-dark); }
+    .btn-pdf { background:transparent; border:1.5px solid var(--gold); color:var(--gold-dark); display:flex; align-items:center; gap:.6rem; }
+    .btn-pdf:hover { background:var(--gold-light); }
+    .btn-send { background:var(--ink); color:#fff; display:flex; align-items:center; gap:.6rem; }
+    .btn-send:hover { background:#333; }
+    .btn-send:disabled { opacity:.5; cursor:not-allowed; }
+
+    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:none; flex-shrink:0; }
+    .btn-send.loading .spinner { display:block; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .error-msg { color:var(--danger); font-size:.8rem; margin-top:.75rem; display:none; }
+    .error-msg.visible { display:block; }
+    .alert { border-radius:6px; padding:1rem 1.2rem; margin-top:1.5rem; font-size:.88rem; display:none; align-items:flex-start; gap:.75rem; line-height:1.5; }
+    .alert.visible { display:flex; }
+    .alert-success { background:#EBF7EF; border:1px solid #A8D5B5; color:var(--success); }
+    .alert-error { background:#FDECEC; border:1px solid #F5C0C0; color:var(--danger); }
+    .alert strong { display:block; margin-bottom:.2rem; }
+
+    footer { text-align:center; padding:2rem; font-size:.75rem; color:#aaa; border-top:1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Studio<span>.</span></div>
+  <div class="header-contact" id="headerEmail">contact@votre-agence.fr</div>
+</header>
+<div class="progress-wrap" id="progressBar"></div>
+
+<main>
+
+  <!-- STEP 1 -->
+  <div class="step-panel active" id="step1">
+    <div class="step-header">
+      <div class="eyebrow">Étape 1 / 4</div>
+      <h2>Quelles prestations<br><em>vous intéressent ?</em></h2>
+      <p>Sélectionnez une ou plusieurs prestations pour construire votre devis.</p>
+    </div>
+    <div class="deco-line"></div>
+    <div class="services-grid" id="servicesGrid"></div>
+    <div class="error-msg" id="err1">Veuillez sélectionner au moins une prestation.</div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(2)">Configurer mes prestations →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-panel" id="step2">
+    <div class="step-header">
+      <div class="eyebrow">Étape 2 / 4</div>
+      <h2>Configurez<br><em>vos prestations</em></h2>
+      <p>Affinez chaque prestation. Les tarifs se mettent à jour en temps réel.</p>
+    </div>
+    <div class="deco-line"></div>
+    <div id="configBlocks"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(1)">← Retour</button>
+      <button class="btn btn-primary" onclick="goTo(3)">Vos coordonnées →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step-panel" id="step3">
+    <div class="step-header">
+      <div class="eyebrow">Étape 3 / 4</div>
+      <h2>Vos<br><em>coordonnées</em></h2>
+      <p>Ces informations figureront dans l'email de confirmation et sur le PDF.</p>
+    </div>
+    <div class="deco-line"></div>
+    <div class="form-grid">
+      <div class="field"><label>Prénom *</label><input type="text" id="fPrenom" placeholder="Marie" /></div>
+      <div class="field"><label>Nom *</label><input type="text" id="fNom" placeholder="Dupont" /></div>
+      <div class="field"><label>Entreprise</label><input type="text" id="fEntreprise" placeholder="Dupont SAS" /></div>
+      <div class="field"><label>Email *</label><input type="email" id="fEmail" placeholder="marie@dupont.fr" /></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="fTel" placeholder="+33 6 00 00 00 00" /></div>
+      <div class="field"><label>Site web</label><input type="text" id="fSite" placeholder="www.dupont.fr" /></div>
+      <div class="field full"><label>Message / précisions</label><textarea id="fMessage" placeholder="Décrivez votre projet, vos contraintes, vos délais…"></textarea></div>
+    </div>
+    <div class="error-msg" id="err3">Merci de remplir les champs obligatoires (prénom, nom, email valide).</div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(2)">← Retour</button>
+      <button class="btn btn-primary" onclick="goTo(4)">Voir le récapitulatif →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step-panel" id="step4">
+    <div class="step-header">
+      <div class="eyebrow">Étape 4 / 4</div>
+      <h2>Votre<br><em>récapitulatif</em></h2>
+      <p>Vérifiez votre devis, téléchargez le PDF ou envoyez les emails de confirmation.</p>
+    </div>
+    <div class="deco-line"></div>
+
+    <div class="info-card" id="clientCard"></div>
+
+    <table class="summary-table">
+      <thead><tr><th>Prestation</th><th style="text-align:right">Estimation</th></tr></thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
+    <div class="total-row" id="totalRow"></div>
+
+    <!-- Info band -->
+    <div class="email-info-band">
+      <span class="ei-icon">💡</span>
+      <div>
+        <strong>Comment ça fonctionne ?</strong>
+        Un email récapitulatif complet sera envoyé <b>à vous</b> (notification interne) et <b>au client</b> (confirmation).
+        Pour garder le PDF : téléchargez-le maintenant via le bouton ci-dessous — il ne sera pas joint à l'email.
+      </div>
+    </div>
+
+    <div class="alert alert-success" id="alertSuccess">
+      <span>✅</span>
+      <div><strong id="alertSuccessTitle"></strong><span id="alertSuccessMsg"></span></div>
+    </div>
+    <div class="alert alert-error" id="alertError">
+      <span>⚠️</span>
+      <div><strong>Erreur d'envoi</strong><span id="alertErrorMsg"></span></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(3)">← Modifier</button>
+      <button class="btn btn-pdf" onclick="downloadPDF()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Télécharger PDF
+      </button>
+      <button class="btn btn-send" id="btnSend" onclick="sendEmails()">
+        <div class="spinner"></div>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+        <span>Envoyer les emails</span>
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<footer>Studio. — Devis non contractuel. Prix HT estimatifs soumis à validation.</footer>
+
+<script>
+// ╔══════════════════════════════════════════════════════╗
+// ║             ⚙️  CONFIGURATION — À REMPLIR            ║
+// ╚══════════════════════════════════════════════════════╝
+const CONFIG = {
+  agencyName       : 'Studio.',                  // Ton nom d'agence
+  agencyEmail      : 'contact@votre-agence.fr',  // Ton email (notif interne)
+  emailjsPublicKey : 'VOTRE_PUBLIC_KEY',          // EmailJS > Account > API Keys
+  emailjsServiceId : 'VOTRE_SERVICE_ID',          // EmailJS > Email Services
+  templateAgency   : 'TEMPLATE_AGENCE_ID',        // Template notif interne
+  templateClient   : 'TEMPLATE_CLIENT_ID',        // Template confirmation client
+};
+
+// ══ DATA ══════════════════════════════════════════════
+const SERVICES = [
+  { id:'social', icon:'📱', name:'Réseaux sociaux',
+    desc:'Gestion éditoriale et animation de vos comptes sociaux.',
+    priceLabel:'À partir de 400 € / mois',
+    options:[
+      { id:'platforms', label:'Plateformes', type:'radio', choices:[
+        {label:'1 plateforme', price:400, unit:'/mois'},
+        {label:'2 plateformes', price:550, unit:'/mois'},
+        {label:'3 plateformes +', price:700, unit:'/mois'},
+      ]},
+      { id:'cm', label:'Community management', type:'check', choices:[
+        {label:'Inclure le CM', price:200, unit:'/mois'},
+      ]},
+    ]},
+  { id:'content', icon:'✍️', name:'Création de contenu',
+    desc:'Copywriting, articles, scripts, fiches produit.',
+    priceLabel:'À partir de 350 €',
+    options:[
+      { id:'type', label:'Type de contenu', type:'radio', choices:[
+        {label:'Articles de blog', price:350, unit:''},
+        {label:'Scripts vidéo / podcast', price:450, unit:''},
+        {label:'Fiches produit', price:300, unit:''},
+        {label:'Ligne éditoriale & branding', price:700, unit:''},
+      ]},
+      { id:'volume', label:'Volume', type:'radio', choices:[
+        {label:'1 – 5 pièces', price:0, unit:''},
+        {label:'6 – 10 (+50 %)', price:0, unit:'', mult:1.5},
+        {label:'10 + (×2)', price:0, unit:'', mult:2},
+      ]},
+    ]},
+  { id:'strategy', icon:'🧭', name:'Stratégie digitale',
+    desc:'Audit, conseil et accompagnement stratégique.',
+    priceLabel:'À partir de 500 €',
+    options:[
+      { id:'scope', label:'Prestation', type:'radio', choices:[
+        {label:'Audit digital ponctuel', price:500, unit:''},
+        {label:'Stratégie 3 mois', price:900, unit:''},
+        {label:'Stratégie 6 mois', price:1500, unit:''},
+        {label:'Accompagnement mensuel', price:650, unit:'/mois'},
+      ]},
+    ]},
+  { id:'website', icon:'🌐', name:'Site web / Landing page',
+    desc:'Conception et développement de votre présence en ligne.',
+    priceLabel:'À partir de 900 €',
+    options:[
+      { id:'type', label:'Type de site', type:'radio', choices:[
+        {label:'Landing page', price:900, unit:''},
+        {label:'Site vitrine — 5 pages', price:1800, unit:''},
+        {label:'Site vitrine — 10 pages +', price:3000, unit:''},
+      ]},
+      { id:'extras', label:'Options', type:'check', choices:[
+        {label:'SEO on-page', price:300, unit:''},
+        {label:'Intégration blog', price:400, unit:''},
+        {label:'Maintenance mensuelle', price:150, unit:'/mois'},
+      ]},
+    ]},
+  { id:'email', icon:'📧', name:'Email marketing',
+    desc:'Newsletters, séquences automatisées et stratégie emailing.',
+    priceLabel:'À partir de 300 € / mois',
+    options:[
+      { id:'size', label:'Taille de liste', type:'radio', choices:[
+        {label:'Jusqu\'à 1 000 contacts', price:300, unit:'/mois'},
+        {label:'1 000 – 5 000 contacts', price:500, unit:'/mois'},
+        {label:'5 000 + contacts', price:800, unit:'/mois'},
+      ]},
+      { id:'freq', label:'Fréquence', type:'radio', choices:[
+        {label:'1× / mois', price:0, unit:''},
+        {label:'2× / mois (+50 %)', price:0, unit:'', mult:1.5},
+        {label:'Hebdomadaire (×2)', price:0, unit:'', mult:2},
+      ]},
+    ]},
+];
+
+// ══ STATE ═══════════════════════════════════════════
+let selectedServices = new Set();
+let configs = {};
+let currentStep = 1;
+let _grandTotal = 0;
+
+// ══ PROGRESS ════════════════════════════════════════
+const STEP_LABELS = ['Prestations','Configuration','Coordonnées','Récapitulatif'];
+function renderProgress() {
+  document.getElementById('progressBar').innerHTML = STEP_LABELS.map((lbl,i) => {
+    const n=i+1, done=n<currentStep, active=n===currentStep;
+    return `<div class="step-indicator">
+      <div class="step-dot-row">
+        ${i>0?`<div class="step-line ${done||active?'done':''}"></div>`:''}
+        <div class="step-dot ${done?'done':''} ${active?'active':''}">${done?'✓':n}</div>
+        ${i<3?`<div class="step-line ${done?'done':''}"></div>`:''}
+      </div>
+      <div class="step-label ${active?'active':''}">${lbl}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══ STEP 1 ══════════════════════════════════════════
+function renderServiceCards() {
+  document.getElementById('servicesGrid').innerHTML = SERVICES.map(s => `
+    <div class="service-card ${selectedServices.has(s.id)?'selected':''}" onclick="toggleService('${s.id}')">
+      <div class="check"></div>
+      <span class="service-icon">${s.icon}</span>
+      <div class="service-name">${s.name}</div>
+      <div class="service-desc">${s.desc}</div>
+      <div class="service-price">${s.priceLabel}</div>
+    </div>`).join('');
+}
+function toggleService(id) {
+  selectedServices.has(id) ? selectedServices.delete(id) : selectedServices.add(id);
+  if (!configs[id]) {
+    configs[id] = {};
+    SERVICES.find(s=>s.id===id).options.forEach(opt => {
+      configs[id][opt.id] = opt.type==='radio' ? {index:0} : {checked:[]};
+    });
+  }
+  renderServiceCards();
+}
+
+// ══ STEP 2 ══════════════════════════════════════════
+function renderConfigBlocks() {
+  document.getElementById('configBlocks').innerHTML = [...selectedServices].map(id => {
+    const svc = SERVICES.find(s=>s.id===id);
+    return `<div class="config-block">
+      <div class="config-block-header"><span class="icon">${svc.icon}</span><span class="title">${svc.name}</span></div>
+      <div class="config-block-body">${svc.options.map(opt=>renderOptionGroup(id,opt)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+function renderOptionGroup(sid, opt) {
+  const cfg = configs[sid][opt.id];
+  if (opt.type==='radio') return `
+    <div class="option-group"><div class="option-label">${opt.label}</div><div class="radio-row">
+    ${opt.choices.map((c,i)=>`
+      <label class="pill-option ${cfg.index===i?'active':''}" onclick="setRadio('${sid}','${opt.id}',${i});return false;">
+        <input type="radio"/>${c.label}
+        <span class="pill-price">${c.price?fmtP(c.price)+(c.unit||''):''}</span>
+      </label>`).join('')}
+    </div></div>`;
+  return `
+    <div class="option-group"><div class="option-label">${opt.label}</div><div class="check-row">
+    ${opt.choices.map((c,i)=>`
+      <label class="pill-option ${cfg.checked.includes(i)?'active':''}" onclick="toggleCheck('${sid}','${opt.id}',${i});return false;">
+        <input type="checkbox"/>${c.label}
+        <span class="pill-price">+${fmtP(c.price)}${c.unit||''}</span>
+      </label>`).join('')}
+    </div></div>`;
+}
+function setRadio(s,o,i){configs[s][o].index=i;renderConfigBlocks();}
+function toggleCheck(s,o,i){const a=configs[s][o].checked,p=a.indexOf(i);p>-1?a.splice(p,1):a.push(i);renderConfigBlocks();}
+
+// ══ PRICING ═════════════════════════════════════════
+function calcServicePrice(id) {
+  const svc=SERVICES.find(s=>s.id===id), cfg=configs[id];
+  let base=0, mult=1, units=[];
+  svc.options.forEach(opt => {
+    if(opt.type==='radio'){const c=opt.choices[cfg[opt.id].index];if(c.mult)mult=c.mult;else{base+=c.price;if(c.unit)units.push(c.unit);}}
+    if(opt.type==='check')cfg[opt.id].checked.forEach(i=>{const c=opt.choices[i];base+=c.price;if(c.unit)units.push(c.unit);});
+  });
+  return {total:Math.round(base*mult), units:[...new Set(units)]};
+}
+function fmtP(n){return n.toLocaleString('fr-FR')+' €';}
+function buildDetail(id,svc){
+  const cfg=configs[id],parts=[];
+  svc.options.forEach(opt=>{
+    if(opt.type==='radio')parts.push(opt.choices[cfg[opt.id].index].label);
+    if(opt.type==='check')cfg[opt.id].checked.forEach(i=>parts.push(opt.choices[i].label));
+  });
+  return parts.join(' · ');
+}
+
+// ══ STEP 4 SUMMARY ══════════════════════════════════
+function renderSummary() {
+  const v=id=>document.getElementById(id).value.trim();
+  document.getElementById('clientCard').innerHTML=`
+    <h4>Contact</h4>
+    <div class="info-row"><span class="info-key">Nom</span><span>${v('fPrenom')} ${v('fNom')}</span></div>
+    ${v('fEntreprise')?`<div class="info-row"><span class="info-key">Entreprise</span><span>${v('fEntreprise')}</span></div>`:''}
+    <div class="info-row"><span class="info-key">Email</span><span>${v('fEmail')}</span></div>
+    ${v('fTel')?`<div class="info-row"><span class="info-key">Téléphone</span><span>${v('fTel')}</span></div>`:''}
+    ${v('fSite')?`<div class="info-row"><span class="info-key">Site web</span><span>${v('fSite')}</span></div>`:''}`;
+
+  let total=0, hasMonthly=false;
+  document.getElementById('summaryBody').innerHTML=[...selectedServices].map(id=>{
+    const svc=SERVICES.find(s=>s.id===id);
+    const {total:t,units}=calcServicePrice(id);
+    total+=t; if(units.includes('/mois'))hasMonthly=true;
+    return `<tr>
+      <td><div class="srv-name">${svc.icon} ${svc.name}</div><div class="srv-detail">${buildDetail(id,svc)}</div></td>
+      <td class="srv-price">${fmtP(t)}${units.includes('/mois')?'<small>/mois</small>':''}</td>
+    </tr>`;
+  }).join('');
+
+  _grandTotal=total;
+  document.getElementById('totalRow').innerHTML=`
+    <div><div class="total-label">Total estimé</div>${hasMonthly?'<div class="total-note">* Certaines prestations sont facturées mensuellement</div>':''}</div>
+    <div class="total-amount">${fmtP(total)}</div>`;
+}
+
+// ══ HTML EMAIL BODY ══════════════════════════════════
+// Génère un email HTML complet intégré dans la variable EmailJS
+function buildEmailHTML(isAgency) {
+  const v=id=>document.getElementById(id).value.trim();
+  const dateStr=new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});
+  const ref='DEV-'+Date.now().toString().slice(-6);
+
+  const rows=[...selectedServices].map((id,idx)=>{
+    const svc=SERVICES.find(s=>s.id===id);
+    const {total,units}=calcServicePrice(id);
+    const bg=idx%2===0?'#ffffff':'#faf8f3';
+    return `<tr style="background:${bg}">
+      <td style="padding:12px 16px;border-bottom:1px solid #e2ddd5;font-family:Georgia,serif;font-size:15px;font-weight:600;color:#1c1a17;">${svc.icon} ${svc.name}</td>
+      <td style="padding:12px 16px;border-bottom:1px solid #e2ddd5;font-size:13px;color:#6b6560;">${buildDetail(id,svc)}</td>
+      <td style="padding:12px 16px;border-bottom:1px solid #e2ddd5;font-size:14px;font-weight:600;color:#1c1a17;white-space:nowrap;text-align:right;">${fmtP(total)}${units.includes('/mois')?'<span style="font-size:11px;font-weight:400;color:#999"> /mois</span>':''}</td>
+    </tr>`;
+  }).join('');
+
+  const greeting = isAgency
+    ? `<p style="margin:0 0 8px;font-size:15px;color:#1c1a17;">Nouveau devis reçu le <strong>${dateStr}</strong>.</p>`
+    : `<p style="margin:0 0 8px;font-size:15px;color:#1c1a17;">Bonjour <strong>${v('fPrenom')}</strong>,</p>
+       <p style="margin:0 0 8px;font-size:15px;color:#1c1a17;">Merci pour votre demande de devis. Voici le récapitulatif de votre sélection.</p>
+       <p style="margin:0 0 20px;font-size:14px;color:#6b6560;">Nous reviendrons vers vous dans les <strong>48 heures</strong> pour affiner cette estimation et répondre à vos questions.</p>`;
+
+  const clientBlock = isAgency ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;background:#f7f4ef;border-radius:6px;border:1px solid #e2ddd5;">
+      <tr><td style="padding:8px 16px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6b6560;font-weight:600;border-bottom:1px solid #e2ddd5;">Client</td></tr>
+      <tr><td style="padding:12px 16px;font-size:14px;color:#1c1a17;">
+        <strong>${v('fPrenom')} ${v('fNom')}</strong>${v('fEntreprise')?' — '+v('fEntreprise'):''}<br>
+        📧 <a href="mailto:${v('fEmail')}" style="color:#b8892a;">${v('fEmail')}</a>
+        ${v('fTel')?'&nbsp;&nbsp;📞 '+v('fTel'):''}
+        ${v('fSite')?'<br>🌐 '+v('fSite'):''}
+      </td></tr>
+    </table>` : '';
+
+  const msgBlock = v('fMessage') ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;background:#f7f4ef;border-radius:6px;border:1px solid #e2ddd5;">
+      <tr><td style="padding:8px 16px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6b6560;font-weight:600;border-bottom:1px solid #e2ddd5;">Message</td></tr>
+      <tr><td style="padding:12px 16px;font-size:14px;color:#1c1a17;line-height:1.6;">${v('fMessage').replace(/\n/g,'<br>')}</td></tr>
+    </table>` : '';
+
+  const closing = isAgency ? '' : `
+    <p style="margin:24px 0 0;font-size:14px;color:#6b6560;line-height:1.6;">
+      Cordialement,<br>
+      <strong style="color:#1c1a17;">${CONFIG.agencyName}</strong><br>
+      <a href="mailto:${CONFIG.agencyEmail}" style="color:#b8892a;">${CONFIG.agencyEmail}</a>
+    </p>`;
+
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f0ede8;font-family:'DM Sans',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ede8;padding:32px 16px;">
+  <tr><td align="center">
+  <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+    <!-- Header -->
+    <tr><td style="background:#1c1a17;padding:28px 32px;">
+      <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:.02em;">${CONFIG.agencyName}</p>
+      <p style="margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#b8892a;">Devis — Réf. ${ref}</p>
+    </td></tr>
+    <tr><td style="background:#b8892a;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+    <!-- Body -->
+    <tr><td style="padding:32px;">
+      ${greeting}
+      ${clientBlock}
+
+      <!-- Table prestations -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:6px;overflow:hidden;border:1px solid #e2ddd5;margin-bottom:0;">
+        <tr style="background:#1c1a17;">
+          <th style="padding:10px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#b8892a;font-weight:600;">Prestation</th>
+          <th style="padding:10px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#b8892a;font-weight:600;">Détail</th>
+          <th style="padding:10px 16px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#b8892a;font-weight:600;">Montant</th>
+        </tr>
+        ${rows}
+        <!-- Total -->
+        <tr style="background:#1c1a17;">
+          <td colspan="2" style="padding:14px 16px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);font-weight:600;">Total estimé HT</td>
+          <td style="padding:14px 16px;text-align:right;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#b8892a;">${fmtP(_grandTotal)}</td>
+        </tr>
+      </table>
+
+      <p style="margin:12px 0 0;font-size:11px;color:#aaa;font-style:italic;">Devis non contractuel — valable 30 jours — prix HT soumis à TVA applicable.</p>
+
+      ${msgBlock}
+      ${closing}
+    </td></tr>
+
+    <!-- Footer -->
+    <tr><td style="background:#1c1a17;padding:20px 32px;text-align:center;">
+      <p style="margin:0;font-size:11px;color:#666;">${CONFIG.agencyName} · <a href="mailto:${CONFIG.agencyEmail}" style="color:#b8892a;text-decoration:none;">${CONFIG.agencyEmail}</a></p>
+      <p style="margin:6px 0 0;font-size:10px;color:#444;">Ce message est généré automatiquement via le système de devis en ligne.</p>
+    </td></tr>
+
+  </table>
+  </td></tr>
+  </table>
+  </body></html>`;
+}
+
+// ══ PDF ══════════════════════════════════════════════
+function generatePDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210, M=20;
+  const v=id=>document.getElementById(id).value.trim();
+  const dateStr=new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});
+  const ref='DEV-'+Date.now().toString().slice(-6);
+
+  doc.setFillColor(28,26,23);doc.rect(0,0,W,44,'F');
+  doc.setFillColor(184,137,42);doc.rect(0,44,W,1.5,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(255,255,255);
+  doc.text(CONFIG.agencyName,M,20);
+  doc.setFontSize(9);doc.setTextColor(184,137,42);doc.text('DEVIS',M,29);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(170,165,155);
+  doc.text(`Réf. ${ref}  ·  ${dateStr}`,M,37);
+  doc.text(CONFIG.agencyEmail,W-M,37,{align:'right'});
+
+  let y=56;
+  doc.setFillColor(247,244,239);doc.roundedRect(M,y,W-2*M,38,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(107,101,96);doc.text('CLIENT',M+6,y+9);
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,26,23);doc.text(`${v('fPrenom')} ${v('fNom')}`,M+6,y+18);
+  if(v('fEntreprise')){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(107,101,96);doc.text(v('fEntreprise'),M+6,y+25);}
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(107,101,96);
+  doc.text(v('fEmail'),M+6,y+32);if(v('fTel'))doc.text(v('fTel'),M+85,y+32);
+  y+=50;
+
+  doc.setFillColor(28,26,23);doc.rect(M,y,W-2*M,9,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(184,137,42);
+  doc.text('PRESTATION',M+4,y+6);doc.text('DÉTAIL',M+88,y+6);doc.text('MONTANT',W-M-4,y+6,{align:'right'});
+  y+=9;
+
+  [...selectedServices].forEach((id,idx)=>{
+    const svc=SERVICES.find(s=>s.id===id);
+    const {total,units}=calcServicePrice(id);
+    const detail=buildDetail(id,svc);
+    doc.setFillColor(idx%2===0?255:250,idx%2===0?255:248,idx%2===0?255:244);
+    doc.rect(M,y,W-2*M,13,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(28,26,23);
+    doc.text(`${svc.icon} ${svc.name}`,M+4,y+5.5);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(107,101,96);
+    doc.text(detail.length>42?detail.slice(0,40)+'…':detail,M+88,y+5.5);
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(28,26,23);
+    doc.text(fmtP(total),W-M-4,y+5.5,{align:'right'});
+    if(units.includes('/mois')){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(107,101,96);doc.text('/mois',W-M-4,y+10,{align:'right'});}
+    doc.setDrawColor(226,221,213);doc.setLineWidth(0.3);doc.line(M,y+13,W-M,y+13);
+    y+=13;
+  });
+
+  y+=8;
+  doc.setFillColor(28,26,23);doc.roundedRect(M,y,W-2*M,16,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(170,165,155);doc.text('TOTAL ESTIMÉ HT',M+6,y+10);
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(184,137,42);doc.text(fmtP(_grandTotal),W-M-6,y+11,{align:'right'});
+
+  const msg=v('fMessage');
+  if(msg){y+=26;doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(107,101,96);doc.text('MESSAGE',M,y);y+=5;doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(28,26,23);doc.text(doc.splitTextToSize(msg,W-2*M),M,y);}
+
+  doc.setFillColor(184,137,42);doc.rect(0,284,W,1,'F');
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,145,140);
+  doc.text('Devis non contractuel — valable 30 jours — prix HT soumis à TVA',W/2,292,{align:'center'});
+
+  return doc;
+}
+function downloadPDF(){
+  const v=id=>document.getElementById(id).value.trim();
+  generatePDF().save(`Devis_${v('fPrenom')}_${v('fNom')}_${Date.now().toString().slice(-6)}.pdf`);
+}
+
+// ══ EMAILJS SEND ════════════════════════════════════
+async function sendEmails(){
+  const btn=document.getElementById('btnSend');
+  const v=id=>document.getElementById(id).value.trim();
+  hideAlerts();
+
+  if(CONFIG.emailjsPublicKey.startsWith('V9gJ9m24slXpr5MMS')){
+    showAlert('error','EmailJS non configuré — remplis le bloc CONFIG en haut du script et recharge la page.');
+    return;
+  }
+
+  btn.classList.add('loading');btn.disabled=true;
+
+  try {
+    emailjs.init({publicKey:CONFIG.emailjsPublicKey});
+
+    const common={
+      agency_name      : CONFIG.agencyName,
+      client_prenom    : v('fPrenom'),
+      client_nom       : v('fNom'),
+      client_email     : v('fEmail'),
+      client_entreprise: v('fEntreprise')||'—',
+      client_tel       : v('fTel')||'—',
+      client_site      : v('fSite')||'—',
+      client_message   : v('fMessage')||'—',
+      total_estime     : fmtP(_grandTotal),
+      date_devis       : new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'}),
+    };
+
+    // 1️⃣ Email interne agence — HTML riche avec bloc client
+    await emailjs.send(CONFIG.emailjsServiceId, CONFIG.templateAgency, {
+      ...common,
+      to_email    : CONFIG.agencyEmail,
+      subject     : `Nouveau devis — ${v('fPrenom')} ${v('fNom')}${v('fEntreprise')?' / '+v('fEntreprise'):''}`,
+      email_html  : buildEmailHTML(true),   // ← variable dans ton template EmailJS
+    });
+
+    // 2️⃣ Email confirmation client — HTML riche avec message de bienvenue
+    await emailjs.send(CONFIG.emailjsServiceId, CONFIG.templateClient, {
+      ...common,
+      to_email    : v('fEmail'),
+      subject     : `Votre devis ${CONFIG.agencyName} — récapitulatif`,
+      email_html  : buildEmailHTML(false),  // ← variable dans ton template EmailJS
+    });
+
+    showAlert('success',
+      `Emails envoyés avec succès !`,
+      `Vous avez reçu la notification sur ${CONFIG.agencyEmail}, et ${v('fPrenom')} a reçu sa confirmation sur ${v('fEmail')}.`
+    );
+
+  } catch(err){
+    console.error(err);
+    showAlert('error','', `Erreur EmailJS : ${err.text||err.message||'vérifiez vos IDs dans CONFIG.'}`);
+  } finally {
+    btn.classList.remove('loading');btn.disabled=false;
+  }
+}
+
+function showAlert(type,title,msg){
+  if(type==='success'){
+    document.getElementById('alertSuccessTitle').textContent=title;
+    document.getElementById('alertSuccessMsg').textContent=msg||'';
+    document.getElementById('alertSuccess').classList.add('visible');
+  } else {
+    document.getElementById('alertErrorMsg').textContent=msg||title;
+    document.getElementById('alertError').classList.add('visible');
+  }
+}
+function hideAlerts(){
+  document.getElementById('alertSuccess').classList.remove('visible');
+  document.getElementById('alertError').classList.remove('visible');
+}
+
+// ══ NAVIGATION ══════════════════════════════════════
+function goTo(n){
+  if(n===2){if(!selectedServices.size){document.getElementById('err1').classList.add('visible');return;}document.getElementById('err1').classList.remove('visible');renderConfigBlocks();}
+  if(n===4){
+    const p=document.getElementById('fPrenom').value.trim(),nm=document.getElementById('fNom').value.trim(),em=document.getElementById('fEmail').value.trim();
+    if(!p||!nm||!em||!em.includes('@')){document.getElementById('err3').classList.add('visible');return;}
+    document.getElementById('err3').classList.remove('visible');
+    renderSummary();hideAlerts();
+  }
+  document.querySelectorAll('.step-panel').forEach(el=>el.classList.remove('active'));
+  document.getElementById('step'+n).classList.add('active');
+  currentStep=n;renderProgress();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ══ INIT ════════════════════════════════════════════
+document.getElementById('headerEmail').textContent=CONFIG.agencyEmail;
+renderProgress();
+renderServiceCards();
+</script>
+
+<!--
+╔══════════════════════════════════════════════════════════════════╗
+║         📧  GUIDE EMAILJS — CONFIGURATION EN 5 MIN              ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  1. Compte gratuit → https://www.emailjs.com                     ║
+║     Plan FREE : 200 emails/mois, aucune CB requise               ║
+║                                                                  ║
+║  2. Email Services → Add New Service (Gmail, Outlook…)           ║
+║     → Copie le Service ID → CONFIG.emailjsServiceId             ║
+║                                                                  ║
+║  3. Crée 2 templates (Email Templates → Create New Template)     ║
+║                                                                  ║
+║  ── TEMPLATE AGENCE ────────────────────────────────────────     ║
+║  To email : {{to_email}}                                         ║
+║  Subject  : {{subject}}                                          ║
+║  Content  : choisir "HTML" et mettre uniquement : {{{email_html}}}║
+║             (triple accolades pour HTML non échappé)             ║
+║  → Copie le Template ID → CONFIG.templateAgency                  ║
+║                                                                  ║
+║  ── TEMPLATE CLIENT ────────────────────────────────────────     ║
+║  To email : {{to_email}}                                         ║
+║  Subject  : {{subject}}                                          ║
+║  Content  : choisir "HTML" et mettre uniquement : {{{email_html}}}║
+║  → Copie le Template ID → CONFIG.templateClient                  ║
+║                                                                  ║
+║  4. Account → API Keys → Public Key → CONFIG.emailjsPublicKey    ║
+║                                                                  ║
+║  5. Remplis CONFIG, publie sur GitHub Pages → c'est live ! 🚀    ║
+╚══════════════════════════════════════════════════════════════════╝
+-->
+</body>
+</html>
